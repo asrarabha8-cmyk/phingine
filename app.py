@@ -2,6 +2,7 @@ import streamlit as st
 from data.database import get_database
 from data.providers.polygon_provider import PolygonProvider
 from pipeline import run_daily_update
+from ranking.market_scan import scan_market_for_flow
 from ui.charts import render_symbol_history_page, render_ranking_page, render_backtest_page
 
 st.set_page_config(page_title="Phoenix Flow Engine", layout="wide")
@@ -22,6 +23,20 @@ if st.sidebar.button("Run Update Now"):
         st.sidebar.warning(f"Failed symbols: {result['failed']}")
     if result["alerts"]:
         st.sidebar.info(f"{len(result['alerts'])} alerts triggered")
+
+st.sidebar.divider()
+st.sidebar.subheader("Market Scan")
+if st.sidebar.button("امسح السوق كامل"):
+    with st.spinner("جاري فحص السوق بالكامل... قد يستغرق عدة دقائق"):
+        qualified = scan_market_for_flow()
+    st.session_state["scan_results"] = qualified
+    st.sidebar.success(f"تم العثور على {len(qualified)} سهم مطابق للفلتر")
+
+    if qualified:
+        with st.spinner(f"تحليل {len(qualified)} سهم..."):
+            provider = PolygonProvider()
+            result = run_daily_update(qualified, provider)
+        st.sidebar.success(f"Updated: {len(result['updated'])} | Failed: {len(result['failed'])}")
 
 st.sidebar.divider()
 page = st.sidebar.radio("Page", ["Symbol History", "Ranking", "Backtest"])
