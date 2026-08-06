@@ -83,7 +83,7 @@ class PolygonProvider(DataProvider):
                 snapshot[symbol] = {"price": price, "day_volume": volume}
         return snapshot
 
-    def get_market_cap(self, symbol: str) -> float | None:
+ def get_market_cap(self, symbol: str) -> float | None:
         """يرجع القيمة السوقية لسهم واحد (يستخدم فقط للمرشحين بعد فلتر السعر/الحجم)."""
         try:
             import requests
