@@ -29,7 +29,6 @@ class PolygonProvider(DataProvider):
             raise DataProviderError("requests is not installed. Run: pip install requests") from e
 
         end = date.today()
-        # extra calendar-day buffer to guarantee enough trading sessions
         start = end - timedelta(days=int(lookback_days * 1.6) + 10)
         url = (
             f"{self.BASE_URL}/v2/aggs/ticker/{symbol}/range/1/day/"
@@ -53,11 +52,8 @@ class PolygonProvider(DataProvider):
         df = df.rename(columns={"o": "open", "h": "high", "l": "low", "c": "close", "v": "volume"})
         df = df.set_index("date")[["open", "high", "low", "close", "volume"]]
         return df.tail(lookback_days)
-            def get_market_snapshot(self) -> dict:
-        """
-        يرجع لقطة سعر وحجم لكل أسهم السوق بطلب واحد فقط (سريع جدًا).
-        المفتاح: الرمز. القيمة: dict فيها price و day_volume.
-        """
+
+    def get_market_snapshot(self) -> dict:
         try:
             import requests
         except ImportError as e:
@@ -83,8 +79,7 @@ class PolygonProvider(DataProvider):
                 snapshot[symbol] = {"price": price, "day_volume": volume}
         return snapshot
 
- def get_market_cap(self, symbol: str) -> float | None:
-        """يرجع القيمة السوقية لسهم واحد (يستخدم فقط للمرشحين بعد فلتر السعر/الحجم)."""
+    def get_market_cap(self, symbol: str) -> float | None:
         try:
             import requests
         except ImportError as e:
@@ -101,4 +96,3 @@ class PolygonProvider(DataProvider):
             return None
 
         return payload.get("results", {}).get("market_cap")
-
