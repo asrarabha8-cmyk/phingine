@@ -1,0 +1,11 @@
+pandas>=2.0
+numpy>=1.24
+streamlit>=1.30
+plotly>=5.18
+requests>=2.31
+
+# Optional — only needed if you enable that specific data provider or AI-enhanced alerts
+yfinance>=0.2.40      # for data/providers/yfinance_provider.py
+anthropic>=0.34        # for alerts/explainer.py AI-enhanced mode (set ANTHROPIC_API_KEY)
+
+pytest>=7.4            # for tests/
