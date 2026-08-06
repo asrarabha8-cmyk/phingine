@@ -26,6 +26,7 @@ class FlowScoreWeights:
     ad_slope: float = 0.15
     relative_volume: float = 0.15
     vwap_position: float = 0.15
+@dataclass(frozen=True)
 class ScanFilters:
     min_price: float = 5.0
     min_avg_volume: int = 500_000
