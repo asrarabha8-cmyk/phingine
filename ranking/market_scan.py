@@ -1,6 +1,6 @@
 from data.providers.market_symbols import get_all_us_symbols
 from data.providers.polygon_provider import PolygonProvider
-from analysis.flow_score import calculate_flow_score
+
 from config import ScanFilters
 
 
