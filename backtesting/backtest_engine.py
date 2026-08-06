@@ -60,9 +60,18 @@ class BacktestReport:
     def max_drawdown_pct(self) -> float:
         if not self.trades:
             return 0.0
-        sorted_trades = sorted(self.trades, key=lambda t: t.entry_date)
-        returns = [t.return_pct / 100 for t in sorted_trades]
-        equity = np.cumsum(returns) + 1
+        # عائد الصفقات المتزامنة (نفس تاريخ الدخول) يحسب كمتوسط
+        # (محفظة موزونة بالتساوي)، وليس كمجموع منفصل لكل صفقة —
+        # لأن عشرات الصفقات بنفس اليوم لا تعني المراهنة بكامل رأس المال
+        # على كل واحدة على حدة.
+        by_date: dict[str, list[float]] = {}
+        for t in self.trades:
+            by_date.setdefault(t.entry_date, []).append(t.return_pct / 100)
+
+        sorted_dates = sorted(by_date.keys())
+        daily_avg_returns = [float(np.mean(by_date[d])) for d in sorted_dates]
+
+        equity = np.cumsum(daily_avg_returns) + 1
         running_max = np.maximum.accumulate(equity)
         running_max = np.where(running_max <= 0, np.nan, running_max)
         drawdown = (equity - running_max) / running_max
