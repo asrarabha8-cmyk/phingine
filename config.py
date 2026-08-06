@@ -26,6 +26,10 @@ class FlowScoreWeights:
     ad_slope: float = 0.15
     relative_volume: float = 0.15
     vwap_position: float = 0.15
+class ScanFilters:
+    min_price: float = 5.0
+    min_avg_volume: int = 500_000
+    min_market_cap: float = 300_000_000
 
 
 @dataclass(frozen=True)
