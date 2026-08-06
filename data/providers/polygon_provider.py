@@ -53,3 +53,52 @@ class PolygonProvider(DataProvider):
         df = df.rename(columns={"o": "open", "h": "high", "l": "low", "c": "close", "v": "volume"})
         df = df.set_index("date")[["open", "high", "low", "close", "volume"]]
         return df.tail(lookback_days)
+            def get_market_snapshot(self) -> dict:
+        """
+        يرجع لقطة سعر وحجم لكل أسهم السوق بطلب واحد فقط (سريع جدًا).
+        المفتاح: الرمز. القيمة: dict فيها price و day_volume.
+        """
+        try:
+            import requests
+        except ImportError as e:
+            raise DataProviderError("requests is not installed. Run: pip install requests") from e
+
+        url = f"{self.BASE_URL}/v2/snapshot/locale/us/markets/stocks/tickers"
+        params = {"apiKey": self.api_key}
+
+        try:
+            resp = requests.get(url, params=params, timeout=30)
+            resp.raise_for_status()
+            payload = resp.json()
+        except Exception as e:
+            raise DataProviderError(f"Polygon snapshot request failed: {e}") from e
+
+        snapshot = {}
+        for ticker in payload.get("tickers", []):
+            symbol = ticker.get("ticker")
+            day = ticker.get("day", {})
+            price = day.get("c")
+            volume = day.get("v")
+            if symbol and price and volume:
+                snapshot[symbol] = {"price": price, "day_volume": volume}
+        return snapshot
+
+    def get_market_cap(self, symbol: str) -> float | None:
+        """يرجع القيمة السوقية لسهم واحد (يستخدم فقط للمرشحين بعد فلتر السعر/الحجم)."""
+        try:
+            import requests
+        except ImportError as e:
+            raise DataProviderError("requests is not installed. Run: pip install requests") from e
+
+        url = f"{self.BASE_URL}/v3/reference/tickers/{symbol}"
+        params = {"apiKey": self.api_key}
+
+        try:
+            resp = requests.get(url, params=params, timeout=10)
+            resp.raise_for_status()
+            payload = resp.json()
+        except Exception:
+            return None
+
+        return payload.get("results", {}).get("market_cap")
+
