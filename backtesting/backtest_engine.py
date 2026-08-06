@@ -60,10 +60,13 @@ class BacktestReport:
     def max_drawdown_pct(self) -> float:
         if not self.trades:
             return 0.0
-        returns = [t.return_pct / 100 for t in self.trades]
-        equity = np.cumsum(returns) + 1  # تراكم جمعي وليس مضاعف — مناسب لصفقات موزّعة عبر أسهم مختلفة
+        sorted_trades = sorted(self.trades, key=lambda t: t.entry_date)
+        returns = [t.return_pct / 100 for t in sorted_trades]
+        equity = np.cumsum(returns) + 1
         running_max = np.maximum.accumulate(equity)
+        running_max = np.where(running_max <= 0, np.nan, running_max)
         drawdown = (equity - running_max) / running_max
+        drawdown = np.nan_to_num(drawdown, nan=0.0)
         return round(float(drawdown.min()) * 100, 2)
 
     @property
