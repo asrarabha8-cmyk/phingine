@@ -118,6 +118,7 @@ def render_ranking_page(db: Database) -> None:
         "Symbol": r.symbol,
         "Flow Score": r.flow_score,
         "Flow Trend": r.flow_trend.value,
+        "Accumulation Streak": r.accumulation_streak,
         "Relative Volume": round(r.relative_volume, 2),
         "Trend Strength": round(r.trend_strength, 2),
         "Momentum %": round(r.momentum_pct, 2),
