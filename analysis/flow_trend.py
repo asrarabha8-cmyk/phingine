@@ -51,3 +51,29 @@ def classify_flow_trend(flow_scores: list[float]) -> tuple[FlowTrend, float]:
         trend = FlowTrend.STABLE
 
     return trend, round(slope, 3)
+    
+    
+
+def compute_accumulation_streak(flow_scores: list[float]) -> int:
+    """
+    Counts consecutive sessions (walking backward from the most recent)
+    where the Institutional Flow Score did not decrease day-over-day.
+    This approximates "how many days has accumulation been building" —
+    useful because a stock can sit in quiet accumulation for weeks before
+    price moves, and a single day's Flow Score alone can't show that.
+
+    flow_scores: chronological (oldest first) Institutional Flow Score values.
+    Returns the streak length in sessions (0 if the most recent session
+    already shows a decrease, or if there's fewer than 2 sessions of data).
+    """
+    if len(flow_scores) < 2:
+        return 0
+
+    streak = 0
+    for i in range(len(flow_scores) - 1, 0, -1):
+        if flow_scores[i] >= flow_scores[i - 1]:
+            streak += 1
+        else:
+            break
+
+    return streak
