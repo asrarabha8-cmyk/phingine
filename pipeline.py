@@ -7,10 +7,16 @@ for every symbol you track. It is the one place that wires together:
     DataProvider -> indicators -> Institutional Flow Score -> Database -> Alerts
 
 Every other module stays decoupled and independently testable.
+
+Symbols are processed in parallel (bounded thread pool) since each symbol's
+update is I/O-bound (network call to the data provider) — this cuts wall
+clock time roughly proportionally to the worker count, without changing
+any of the per-symbol logic.
 """
 from __future__ import annotations
 
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date
 
 from data.database import Database, FlowRecord, get_database
@@ -77,21 +83,34 @@ def _safe_float(value) -> float | None:
         return None
 
 
-def run_daily_update(symbols: list[str], provider: DataProvider, db: Database | None = None) -> dict:
+def run_daily_update(
+    symbols: list[str],
+    provider: DataProvider,
+    db: Database | None = None,
+    max_workers: int = 15,
+) -> dict:
     """
-    Batch entry point. Returns a summary dict:
+    Batch entry point. Processes symbols concurrently (I/O-bound network
+    calls), so wall clock time scales down roughly with max_workers instead
+    of growing linearly with the symbol count. Returns a summary dict:
         {"updated": [...], "failed": [...], "alerts": [Alert, ...]}
     """
     db = db or get_database()
     updated, failed, all_alerts = [], [], []
 
-    for symbol in symbols:
-        try:
-            alerts = update_symbol(db, provider, symbol)
-            updated.append(symbol)
-            all_alerts.extend(alerts)
-        except Exception as e:
-            logger.exception("Failed updating %s", symbol)
-            failed.append((symbol, str(e)))
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(update_symbol, db, provider, symbol): symbol
+            for symbol in symbols
+        }
+        for future in as_completed(futures):
+            symbol = futures[future]
+            try:
+                alerts = future.result()
+                updated.append(symbol)
+                all_alerts.extend(alerts)
+            except Exception as e:
+                logger.exception("Failed updating %s", symbol)
+                failed.append((symbol, str(e)))
 
     return {"updated": updated, "failed": failed, "alerts": all_alerts, "run_date": date.today().isoformat()}
