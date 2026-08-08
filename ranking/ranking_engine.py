@@ -7,12 +7,18 @@ Priority (as specified):
     3. Relative Volume
     4. Trend strength (Flow Score slope magnitude)
     5. Momentum (price rate-of-change)
+
+Accumulation Streak is informational only — it does not affect ranking
+order, since a long streak of quiet accumulation can precede a price move
+by weeks. It's exposed as a column so the person reviewing results can
+distinguish "just starting to accumulate" from "has been accumulating for
+a while."
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from analysis.flow_trend import FlowTrend, classify_flow_trend
+from analysis.flow_trend import FlowTrend, classify_flow_trend, compute_accumulation_streak
 from data.database import Database
 
 # Flow Trend has a natural order from best to worst for ranking purposes.
@@ -33,8 +39,9 @@ class RankedSymbol:
     flow_trend: FlowTrend
     flow_trend_slope: float
     relative_volume: float
-    trend_strength: float   # abs(slope) — how decisive the trend is
-    momentum_pct: float     # price rate of change over the trend lookback
+    trend_strength: float          # abs(slope) — how decisive the trend is
+    momentum_pct: float            # price rate of change over the trend lookback
+    accumulation_streak: int = 0   # consecutive sessions of non-decreasing Flow Score
     rank: int = 0
 
 
@@ -59,6 +66,7 @@ def rank_symbols(db: Database, trend_lookback: int = 10) -> list[RankedSymbol]:
             continue
 
         trend, slope = classify_flow_trend(flow_scores)
+        streak = compute_accumulation_streak(flow_scores)
         latest = rows[-1]
 
         scored.append(RankedSymbol(
@@ -69,6 +77,7 @@ def rank_symbols(db: Database, trend_lookback: int = 10) -> list[RankedSymbol]:
             relative_volume=latest["relative_volume"] or 0.0,
             trend_strength=abs(slope),
             momentum_pct=_momentum_pct(prices),
+            accumulation_streak=streak,
         ))
 
     scored.sort(
