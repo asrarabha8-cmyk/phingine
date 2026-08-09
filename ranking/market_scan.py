@@ -19,7 +19,7 @@ def scan_market_for_flow():
     ]
 
     qualified = []
-    with ThreadPoolExecutor(max_workers=35) as executor:
+    with ThreadPoolExecutor(max_workers=50) as executor:
         futures = {executor.submit(provider.get_market_cap, sym): sym for sym in candidates}
         for future in as_completed(futures):
             symbol = futures[future]
