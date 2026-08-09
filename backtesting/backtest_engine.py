@@ -60,10 +60,6 @@ class BacktestReport:
     def max_drawdown_pct(self) -> float:
         if not self.trades:
             return 0.0
-        # عائد الصفقات المتزامنة (نفس تاريخ الدخول) يحسب كمتوسط
-        # (محفظة موزونة بالتساوي)، وليس كمجموع منفصل لكل صفقة —
-        # لأن عشرات الصفقات بنفس اليوم لا تعني المراهنة بكامل رأس المال
-        # على كل واحدة على حدة.
         by_date: dict[str, list[float]] = {}
         for t in self.trades:
             by_date.setdefault(t.entry_date, []).append(t.return_pct / 100)
@@ -88,8 +84,6 @@ class BacktestReport:
 
     @property
     def sharpe_ratio(self) -> float:
-        """Annualized, assuming each trade's return is one 'period' and using
-        the configured holding period to approximate periods per year."""
         if len(self.trades) < 2:
             return 0.0
         returns = np.array([t.return_pct / 100 for t in self.trades])
@@ -132,7 +126,6 @@ def _simulate_trade(rows: list, entry_idx: int) -> Trade | None:
             return Trade(entry_row["symbol"], entry_row["date"], entry_price,
                          rows[i]["date"], price, "stop_loss", round(change_pct, 2))
 
-    # time exit at the end of the holding period
     exit_row = rows[exit_end]
     if not exit_row["price"]:
         return None
@@ -147,6 +140,12 @@ def run_backtest(db: Database, symbol: str | None = None) -> BacktestReport:
     the trades into one report.
     """
     cfg_lookback = settings.accumulation.lookback_sessions
+    # Prices need a longer window than flow_scores so detect_early_accumulation
+    # can evaluate its prior-quiet-period check (which looks further back than
+    # the trigger window itself). Without this, that check never has enough
+    # data during backtesting and silently no-ops, making the fix invisible
+    # here even though it works going forward in live scans.
+    extended_lookback = max(cfg_lookback, settings.accumulation.prior_quiet_sessions + cfg_lookback)
     symbols = [symbol] if symbol else db.get_all_symbols()
 
     trades: list[Trade] = []
@@ -159,8 +158,10 @@ def run_backtest(db: Database, symbol: str | None = None) -> BacktestReport:
 
         for i in range(cfg_lookback, len(rows)):
             window = rows[max(0, i - cfg_lookback + 1): i + 1]
+            extended_window = rows[max(0, i - extended_lookback + 1): i + 1]
+
             flow_scores = [r["institutional_flow_score"] for r in window if r["institutional_flow_score"] is not None]
-            prices = [r["price"] for r in window if r["price"] is not None]
+            prices = [r["price"] for r in extended_window if r["price"] is not None]
             relvols = [r["relative_volume"] for r in window if r["relative_volume"] is not None]
 
             if len(flow_scores) < cfg_lookback or len(prices) < cfg_lookback:
