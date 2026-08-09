@@ -52,14 +52,15 @@ def _momentum_pct(prices: list[float]) -> float:
 
 
 def rank_symbols(db: Database, trend_lookback: int = 10) -> list[RankedSymbol]:
-    symbols = db.get_all_symbols()
+    all_rows = db.get_recent_history_bulk(trend_lookback)
+
+    by_symbol: dict[str, list] = {}
+    for row in all_rows:
+        by_symbol.setdefault(row["symbol"], []).append(row)
+
     scored: list[RankedSymbol] = []
 
-    for symbol in symbols:
-        rows = db.get_history(symbol, trend_lookback)
-        if not rows:
-            continue
-
+    for symbol, rows in by_symbol.items():
         flow_scores = [r["institutional_flow_score"] for r in rows if r["institutional_flow_score"] is not None]
         prices = [r["price"] for r in rows if r["price"] is not None]
         if not flow_scores:
