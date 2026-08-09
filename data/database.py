@@ -194,29 +194,14 @@ class Database:
                 {"symbol": symbol},
             )
             return cur.fetchone()
-            def get_recent_history_bulk(self, days: int) -> list:
-        with self.cursor() as cur:
-            cur.execute(
-                """
-                WITH ranked AS (
-                    SELECT *, ROW_NUMBER() OVER (
-                        PARTITION BY symbol ORDER BY date DESC
-                    ) AS rn
-                    FROM flow_history
-                )
-                SELECT * FROM ranked WHERE rn <= %(days)s ORDER BY symbol, date ASC
-                """,
-                {"days": days},
-            )
-            return cur.fetchall()
 
-        def get_recent_history_bulk(self, days: int) -> list:
+    def get_recent_history_bulk(self, days: int) -> list:
         """One query for every symbol's recent sessions, instead of one
         query per symbol. Uses a window function so this scales to
         thousands of symbols without thousands of round trips."""
         with self.cursor() as cur:
             cur.execute(
-                f"""
+                """
                 WITH ranked AS (
                     SELECT *, ROW_NUMBER() OVER (
                         PARTITION BY symbol ORDER BY date DESC
@@ -362,6 +347,22 @@ class PostgresDatabase:
                 {"symbol": symbol},
             )
             return cur.fetchone()
+
+    def get_recent_history_bulk(self, days: int) -> list:
+        with self.cursor() as cur:
+            cur.execute(
+                """
+                WITH ranked AS (
+                    SELECT *, ROW_NUMBER() OVER (
+                        PARTITION BY symbol ORDER BY date DESC
+                    ) AS rn
+                    FROM flow_history
+                )
+                SELECT * FROM ranked WHERE rn <= %(days)s ORDER BY symbol, date ASC
+                """,
+                {"days": days},
+            )
+            return cur.fetchall()
 
     def get_all_symbols(self) -> list[str]:
         with self.cursor() as cur:
