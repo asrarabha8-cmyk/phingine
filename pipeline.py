@@ -87,7 +87,7 @@ def run_daily_update(
     symbols: list[str],
     provider: DataProvider,
     db: Database | None = None,
-    max_workers: int = 35,
+    max_workers: int = 50,
 ) -> dict:
     """
     Batch entry point. Processes symbols concurrently (I/O-bound network
