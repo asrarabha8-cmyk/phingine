@@ -5,6 +5,7 @@ Meant to be imported into the existing Phoenix Scanner Streamlit app
 own any business logic, which all lives in analysis/, ranking/, backtesting/.
 """
 from __future__ import annotations
+from ranking.ranking_engine import rank_symbols, RankedSymbol
 
 import pandas as pd
 import plotly.graph_objects as go
