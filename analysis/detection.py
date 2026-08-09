@@ -39,7 +39,13 @@ def detect_early_accumulation(
     Badge: "Early Institutional Accumulation"
     Condition: Flow Score rising steadily while price is sideways or only
     mildly higher (i.e. buying pressure is building before the market has
-    repriced the stock), with some real volume behind it.
+    repriced the stock), with some real volume behind it — AND the price
+    must have already been quiet over a longer prior window, not just the
+    trigger window itself. Without this, a stock that just started an
+    explosive breakout can satisfy the short-window "sideways" check on
+    its very first breakout day (since Flow Score reacts to volume/price
+    immediately), firing the signal right as the move begins rather than
+    before it — which is the opposite of the intent.
     """
     cfg = settings.accumulation
     n = cfg.lookback_sessions
@@ -59,6 +65,21 @@ def detect_early_accumulation(
         "price_sideways_or_mild_up": cfg.min_price_change_pct <= price_change_pct <= cfg.max_price_change_pct,
         "volume_support": avg_relvol >= cfg.min_relative_volume,
     }
+
+    # Longer prior window check: price shouldn't have already made a big
+    # move before the trigger window either — otherwise we're catching a
+    # breakout in progress, not genuine early accumulation.
+    prior_n = cfg.prior_quiet_sessions
+    if len(prices) >= prior_n:
+        prior_window = prices[-prior_n:-n] if len(prices) >= prior_n + n else prices[:-n]
+        if len(prior_window) >= 2 and prior_window[0]:
+            prior_change_pct = ((prior_window[-1] - prior_window[0]) / prior_window[0]) * 100
+            conditions["quiet_before_trigger"] = abs(prior_change_pct) <= cfg.max_prior_price_change_pct
+        else:
+            conditions["quiet_before_trigger"] = True
+    else:
+        conditions["quiet_before_trigger"] = True
+
     triggered = all(conditions.values())
 
     if triggered:
@@ -72,6 +93,7 @@ def detect_early_accumulation(
         reason = f"Conditions not met: {', '.join(failed)}"
 
     return DetectionResult(triggered, round(fs_slope, 3), round(price_change_pct, 2), round(avg_relvol, 2), reason)
+
 
 
 def detect_distribution(
