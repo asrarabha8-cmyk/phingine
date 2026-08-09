@@ -50,6 +50,8 @@ class AccumulationConfig:
     min_price_change_pct: float = -2.0    # allow small pullbacks, not a real decline
     lookback_sessions: int = 7
     min_relative_volume: float = 1.1      # some volume support required
+    prior_quiet_sessions: int = 20        # longer window checked BEFORE the trigger window
+    max_prior_price_change_pct: float = 15.0  # price must have been quiet over that longer window too
 
 
 @dataclass(frozen=True)
