@@ -108,10 +108,16 @@ def render_ranking_page(db: Database) -> None:
     st.subheader("Institutional Flow Ranking")
     st.caption("Ranked by Flow Score → Flow Trend → Relative Volume → Trend Strength → Momentum (not price).")
 
+    hide_moved = st.checkbox("إخفاء الأسهم التي تحركت بالفعل بشكل كبير مؤخرًا (Already Moved)", value=False)
+
     ranked = rank_symbols(db)
     if not ranked:
         st.warning("No symbols in the database yet.")
         return
+
+    if hide_moved:
+        ranked = [r for r in ranked if not r.already_moved]
+        ranked = [RankedSymbol(**{**vars(r), "rank": i + 1}) for i, r in enumerate(ranked)]
 
     table = pd.DataFrame([{
         "Rank": r.rank,
@@ -119,6 +125,8 @@ def render_ranking_page(db: Database) -> None:
         "Flow Score": r.flow_score,
         "Flow Trend": r.flow_trend.value,
         "Accumulation Streak": r.accumulation_streak,
+        "Recent Move %": r.recent_move_pct,
+        "Already Moved": "⚠️ نعم" if r.already_moved else "لا",
         "Relative Volume": round(r.relative_volume, 2),
         "Trend Strength": round(r.trend_strength, 2),
         "Momentum %": round(r.momentum_pct, 2),
